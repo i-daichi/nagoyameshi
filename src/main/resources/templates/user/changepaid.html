@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+	<head>
+		<div th:replace="~{fragment :: meta}"></div>
+		<div th:replace="~{fragment :: styles}"></div>
+		<script src="https://js.stripe.com/v3/"></script>
+		<title>会員ステータス変更(無料から有料に変更)</title>
+	</head>
+
+	<body>
+		<div class="nagoyameshi-wrapper">
+			<!-- ヘッダー -->
+			<div th:replace="~{fragment :: header}"></div>
+
+			<main>
+				<div class="container nagoyameshi-container pb-5">
+					<div class="row justify-content-center">
+						<nav class="my-3" style="--bs-breadcrumb-divider: '>';"
+							aria-label="breadcrumb">
+							<ol class="breadcrumb mb-0">
+								<li class="breadcrumb-item"><a th:href="@{/}">ホーム</a></li>
+								<li class="breadcrumb-item active"
+									aria-current="page">会員ステータス変更(無料から有料に変更)</li>
+							</ol>
+						</nav>
+						<div th:if="${successMessage}" class="alert alert-info">
+							<span th:text="${successMessage}"></span>
+						</div>
+
+						<h1 class="text-center mb-3">有料会員に変更</h1>
+
+						<form id="payment-form" method="post" th:action="@{/user/charge}">
+							<!-- CSRFトークンを埋め込む -->
+							<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+							<div class="card mb-3 col-md-6 col-lg-4">
+								<div class="card-header text-center">
+									有料会員が出来ること
+								</div>
+								<ul class="list-group list-group-flush">
+									<li class="list-group-item">・店舗を予約可能</li>
+									<li class="list-group-item">・店舗をお気に入りに追加出来る機能</li>
+									<li class="list-group-item">・レビューを全件閲覧・投稿可能</li>
+									<li class="list-group-item">・月額300円で利用可能</li>
+								</ul>
+							</div>
+
+							<!-- Stripeカード入力要素 -->
+							<div class="card mb-4 col-md-6 shadow-sm">
+								<div class="card-header text-left">
+									クレジットカード情報
+								</div>
+								<div class="card-body">
+									<div class="form-group mb-3">
+										<label for="card-number">カード番号</label>
+										<div id="card-number" class="form-control"></div>
+									</div>
+
+									<div class="row mb-3">
+										<div class="col-md-6">
+											<label for="card-expiry">有効期限</label>
+											<div id="card-expiry" class="form-control"></div>
+										</div>
+
+										<div class="col-md-6">
+											<label for="card-cvc">CVC</label>
+											<div id="card-cvc" class="form-control"></div>
+										</div>
+									</div>
+
+									<div class="form-group mb-3">
+										<label for="cardholder-name">カード名義人</label>
+										<input type="text" id="cardholder-name" class="form-control" placeholder="例: TARO YAMADA">
+									</div>
+								</div>
+							</div>
+
+							<!-- Stripeトークンを送信するための隠しフィールド -->
+							<input type="hidden" id="stripe-token" name="stripeToken">
+
+							<div class="form-group d-flex justify-content-center">
+								<button type="submit" id="payment-button" class="btn text-white shadow-sm w-50 nagoyameshi-btn">変更する</button>
+							</div>
+						</form>
+					</div>
+				</main>
+				<div th:replace="~{fragment :: footer}"></div>
+			</div>
+			<div th:replace="~{fragment :: scripts}"></div>
+		</body>
+		<script th:replace="~{fragment :: scripts}"></script>
+		<script>
+			// Stripeの公開キーを設定
+			const stripe = Stripe("[[${stripePublicKey}]]");
+			const elements = stripe.elements();
+
+			// カード情報を入力するフィールドを作成
+			const cardNumber = elements.create('cardNumber', {
+				showIcon: true, // カードブランドアイコンを表示
+				placeholder: 'カード番号'
+			});
+			cardNumber.mount('#card-number');
+
+			const cardExpiry = elements.create('cardExpiry');
+			cardExpiry.mount('#card-expiry');
+
+			const cardCvc = elements.create('cardCvc');
+			cardCvc.mount('#card-cvc');
+
+			// フォーム送信時にStripeトークンを取得して、送信する
+			const form = document.getElementById('payment-form');
+			form.addEventListener('submit', async (event) => {
+				event.preventDefault();
+
+				// Cardをトークン化
+				const {token, error} = await stripe.createToken(cardNumber);
+
+				if (error) {
+					// エラーメッセージを表示
+					alert(error.message);
+				} else {
+					// トークンを隠しフィールドに設定
+					const stripeTokenInput = document.getElementById('stripe-token');
+					stripeTokenInput.value = token.id;
+
+					// フォームを送信
+					form.submit();
+				}
+			});
+		</script>
+	</html>
